@@ -41,6 +41,7 @@ int main(int argc, char** argv)
 			}
 		}
 
+    // Tokenization
 		const char* WHITE_SPACE =" \t\n";
 		char* tok = strtok(buf, WHITE_SPACE);
 
@@ -49,136 +50,125 @@ int main(int argc, char** argv)
 		}
 
 		do {
-			if (num_entries == 0) {
-				struct entry* e = malloc(sizeof(struct entry));
+      if (num_entries == 0) {
+        struct entry* e = malloc(sizeof(struct entry));
 
-				strncpy(e->name, tok, strlen(tok));
-				e->frequency = 1;
+        strncpy(e->name, tok, strlen(tok));
+        e->frequency = 1;
 
-				LIST_INSERT_HEAD(&head, e, entries);
-				num_entries++;
-				continue;
-			} else if (num_entries == 1) {
-				int cmp = strcmp(tok, head.lh_first->name);
+        LIST_INSERT_HEAD(&head, e, entries);
+        num_entries++;
+        continue;
+      } else if (num_entries == 1) {
+        int cmp = strcmp(tok, head.lh_first->name);
 
-				if (cmp == 0) {
-					head.lh_first->frequency++;
-				} else if (cmp > 0) {
-					struct entry* e = malloc(sizeof(struct entry));
+        if (cmp == 0) {
+          head.lh_first->frequency++;
+        } else if (cmp > 0) {
+          struct entry* e = malloc(sizeof(struct entry));
 
-					strncpy(e->name, tok, strlen(tok));
-					e->frequency = 1;
+          strncpy(e->name, tok, strlen(tok));
+          e->frequency = 1;
 
 
-					LIST_INSERT_AFTER(head.lh_first, e, entries);
-					num_entries++;
-				} else if (cmp < 0) {
-					struct entry* e = malloc(sizeof(struct entry));
+          LIST_INSERT_AFTER(head.lh_first, e, entries);
+          num_entries++;
+        } else if (cmp < 0) {
+          struct entry* e = malloc(sizeof(struct entry));
 
-					strncpy(e->name, tok, strlen(tok));
-					e->frequency = 1;
+          strncpy(e->name, tok, strlen(tok));
+          e->frequency = 1;
 
-					LIST_INSERT_BEFORE(head.lh_first, e, entries);
-					num_entries++;
-				}
+          LIST_INSERT_BEFORE(head.lh_first, e, entries);
+          num_entries++;
+        }
 
-				continue;
-			}
+        continue;
+      }
 
-			struct entry* np = head.lh_first;
-			struct entry* final_np = NULL;
+      // Reduce: actual word-counting
+      struct entry* np = head.lh_first;
+      struct entry* final_np = NULL;
 
-			int last_cmp = strcmp(tok, np->name);
+      int last_cmp = strcmp(tok, np->name);
 
-			if (last_cmp < 0) {
-				struct entry* e = malloc(sizeof(struct entry));
+      if (last_cmp < 0) {
+        struct entry* e = malloc(sizeof(struct entry));
 
-				strncpy(e->name, tok, strlen(tok));
-				e->frequency = 1;
+        strncpy(e->name, tok, strlen(tok));
+        e->frequency = 1;
 
-				LIST_INSERT_BEFORE(np, e, entries);
-				num_entries++;
+        LIST_INSERT_HEAD(&head, e, entries);
+        num_entries++;
 
-				continue;
+        continue;
 
-			} else if (last_cmp == 0) {
-				np->frequency++;
+      } else if (last_cmp == 0) {
+        np->frequency++;
 
-				continue;
-			}
+        continue;
+      }
 
-			for (np = np->entries.le_next; np != NULL; np = np->entries.le_next) {
-				int cmp = strcmp(tok, np->name);
+      for (np = np->entries.le_next; np != NULL; np = np->entries.le_next) {
+        int cmp = strcmp(tok, np->name);
 
-				if (cmp == 0) {
-					np->frequency++;
-					break;
-				} else if (last_cmp * cmp < 0) { // sign-crossing occurred
-					struct entry* e = malloc(sizeof(struct entry));
+        if (cmp == 0) {
+          np->frequency++;
+          break;
+        } else if (last_cmp * cmp < 0) { // sign-crossing occurred
+          struct entry* e = malloc(sizeof(struct entry));
 
-					strncpy(e->name, tok, strlen(tok));
-					e->frequency = 1;
+          strncpy(e->name, tok, strlen(tok));
+          e->frequency = 1;
 
-					LIST_INSERT_BEFORE(np, e, entries);
-					num_entries++;
+          LIST_INSERT_BEFORE(np, e, entries);
+          num_entries++;
 
-					break;
-				}
+          break;
+        }
 
-				if (np->entries.le_next == NULL) {
-					final_np = np;
-				} else {
-					last_cmp = cmp;
-				}
-			}
+        if (np->entries.le_next == NULL) {
+          final_np = np;
+        } else {
+          last_cmp = cmp;
+        }
+      }
 
-			if (!np && final_np) {
-				struct entry* e = malloc(sizeof(struct entry));
+      if (!np && final_np) {
+        struct entry* e = malloc(sizeof(struct entry));
 
-				strncpy(e->name, tok, strlen(tok));
-				e->frequency = 1;
+        strncpy(e->name, tok, strlen(tok));
+        e->frequency = 1;
 
-				LIST_INSERT_AFTER(final_np, e, entries);
-				num_entries++;
-			}
-		} while (tok = strtok(NULL, WHITE_SPACE));
-	}
+        LIST_INSERT_AFTER(final_np, e, entries);
+        num_entries++;
+      }
+    } while (tok = strtok(NULL, WHITE_SPACE));
+  }
 
-	struct entry** entries_for_summary = malloc(sizeof(struct entry*) * num_entries);
-	int idx = 0;
+  // Print the counting result very very slow way.
+  int max_frequency = 0;
 
-	for (struct entry* np = head.lh_first; np != NULL; np = np->entries.le_next) {
-		entries_for_summary[idx] = np;
-		idx++;
-	}
+  for (struct entry* np = head.lh_first; np != NULL; np = np->entries.le_next) {
+    if (max_frequency < np->frequency) {
+      max_frequency = np->frequency;
+    }
+  }
 
-	struct entry** reduced_entries = malloc(sizeof(struct entry*) * num_entries * num_entries);
-	memset(reduced_entries, 0, num_entries * num_entries);
-	int* n_entries = malloc(sizeof(int) * num_entries);
-	memset(n_entries, 0, num_entries);
+  for (int it = max_frequency; it > 0; --it) {
+    for (struct entry* np = head.lh_first; np != NULL; np = np->entries.le_next) {
+      if (np->frequency == it) {
+        printf("%s %d\n", np->name, np->frequency);
+      }
+    }
+  }
 
-	for (struct entry* np = head.lh_first; np != NULL; np = np->entries.le_next) {
-		reduced_entries[np->frequency * num_entries + n_entries[np->frequency]] = np;
-		n_entries[np->frequency]++;
-	}
+  // Release
+  while (head.lh_first != NULL) {
+    LIST_REMOVE(head.lh_first, entries);
+  }
 
-	free(entries_for_summary);
+  fclose(fp);
 
-	for (int it = 1; it < num_entries; ++it) {
-		for (int jt = 0; jt < n_entries[num_entries - it]; ++jt) {
-			struct entry* e = reduced_entries[(num_entries - it) * num_entries + jt];
-			printf("%s %d\n", e->name, num_entries - it);
-		}
-	}
-
-	free(reduced_entries);
-	free(n_entries);
-
-	while (head.lh_first != NULL) {
-		LIST_REMOVE(head.lh_first, entries);
-	}
-
-	fclose(fp);
-
-	return 0;
+  return 0;
 }
