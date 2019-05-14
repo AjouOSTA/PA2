@@ -79,7 +79,7 @@ int main(int argc, char** argv)
           strncpy(e->name, tok, strlen(tok));
           e->frequency = 1;
 
-          LIST_INSERT_BEFORE(head.lh_first, e, entries);
+          LIST_INSERT_HEAD(&head, e, entries);
           num_entries++;
         }
 
